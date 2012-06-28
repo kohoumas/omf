@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset='utf-8'>
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <link href='https://fonts.googleapis.com/css?family=Chivo:900' rel='stylesheet' type='text/css'>
+    <link rel="stylesheet" type="text/css" href="stylesheets/stylesheet.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/pygment_trac.css" media="screen" />
+    <link rel="stylesheet" type="text/css" href="stylesheets/print.css" media="print" />
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+    <title>OMF by mytestbed</title>
+  </head>
+
+  <body>
+    <div id="container">
+      <div class="inner">
+
+        <header>
+          <h1>OMF</h1>
+          <h2>Developer Preview</h2>
+        </header>
+
+        <section id="downloads" class="clearfix">
+          <a href="https://github.com/mytestbed/omf/zipball/master" id="download-zip" class="button"><span>Download .zip</span></a>
+          <a href="https://github.com/mytestbed/omf/tarball/master" id="download-tar-gz" class="button"><span>Download .tar.gz</span></a>
+          <a href="https://github.com/mytestbed/omf" id="view-on-github" class="button"><span>View on GitHub</span></a>
+        </section>
+
+        <hr>
+
+        <section id="main_content">
+          <p><a href="http://travis-ci.org/mytestbed/omf"><img src="https://secure.travis-ci.org/mytestbed/omf.png" alt="Build Status"></a></p>
+
+<h2>Important</h2>
+
+<p>We are currently working on this towards our new version 6 release. These pre-release packages are demonstrating the new system design, protocol and API, and for now, especially, the new resource controller structure and API for reviewing. The code, protocol, and API will be continuously evolving and if you have any suggestion regarding the design or implementation, feel free to <a href="https://github.com/mytestbed/omf/issues">create a new issue</a>.</p>
+
+<p><em>If are looking for the current 5.4 stable release, please go to our official website and follow the <a href="https://omf.mytestbed.net/projects/omf/wiki/Installation">installation guide</a></em></p>
+
+<h2>Introduction to OMF</h2>
+
+<p>OMF is a framework for controlling, instrumenting, and managing experimental platforms (testbeds).</p>
+
+<ul>
+<li><p>Researchers use OMF to describe, instrument, and execute their experiments.</p></li>
+<li><p>Testbed providers use OMF to make their resources discoverable, control access to them, optimise their utilisation through virtualisation, and federation with other testbeds.</p></li>
+</ul><p>Please visit our official website <a href="https://www.mytestbed.net">mytestbed.net</a> for more information.</p>
+
+<h2>Documentation</h2>
+
+<p><a href="http://rubydoc.info/github/mytestbed/omf">http://rubydoc.info/github/mytestbed/omf</a></p>
+
+<h2>OMF 6 design documentation</h2>
+
+<p>For full documentation regarding the design of OMF version 6, please visit our <a href="http://omf.mytestbed.net/projects/omf/wiki/Architectural_Foundation">official documentation</a></p>
+
+<h2>Installation</h2>
+
+<p>In OMF 6, we switched to the GEM system to release packages.</p>
+
+<p>To install OMF RC, simple do (--pre indicates pre-release):</p>
+
+<pre><code>gem install omf_rc --pre --no-ri --no-rdoc
+</code></pre>
+
+<p><em>We are building and testing against Ruby version 1.9.2 and 1.9.3, means we are dropping support for Ruby 1.8.</em></p>
+
+<p><a href="https://rvm.io/">RVM (ruby version manageer)</a> is strongly recommended if your OS release doesn't provide these ruby versions.</p>
+
+<p>You could also build and install packages using the latest source from git repository:</p>
+
+<pre><code>git clone https://github.com/mytestbed/omf.git
+</code></pre>
+
+<p>Then inside the repository directory, type:</p>
+
+<pre><code>rake
+</code></pre>
+
+<p>This will install all the necessary gems, build omf gems, and run the test files.</p>
+
+<p><em>Some components are linked in omf main repository as git submodules, if you want to use them, simply issue these commands inside the newly cloned repository:</em></p>
+
+<pre><code>git submodule init
+git submodule update
+</code></pre>
+
+<h2>Extend OMF resource controller system</h2>
+
+<p>One of the biggest changes we are trying to make in version 6 resource controller system is to focus on the core features, and instead of trying to implement all the functionalities and hardware support, we want to provide an abstract entity acts as the proxy, processing the resource related messages based on the <a href="http://omf.mytestbed.net/projects/omf/wiki/ArchitecturalFoundation2ProtocolInteractions">new messaging protocol</a>, and decides what type of the actions to perform according to the operation defined by the message and constrained by the proxy's capabilities which could be easily defined and extended by the resource providers.</p>
+
+<p>In our design, the clients interact with the resource proxies purely via pubsub messages, they publish certain operation (create, request, configure, and release) messages to the pubsub nodes, and subscribe to the nodes for inform messages published by the resource proxies based on the outcome of the these requested operations. The resource proxy instances are actually doing the same, but the opposite, they are subscribing to the pubsub system, react when new operation messages appeared by calling the internal methods corresponding to the content of the operation messages. For example, when a request message contains XML entity property 'speed' received, the resource proxy will try to call method 'request_speed' (it is a naming convention, method name request_property_name is for request messages, and configure_property_name is for configure messages.)</p>
+
+<p>Since the base abstract resource proxy doesn't have request_speed method defined, we need to extend it by implementing a resource proxy definition file, which contains the definition of request_speed functionality. The resource proxy definition is a mixin module, conceptually represents a type of resource it needs to handle. These modules could define a series of functionalities they could support, including:</p>
+
+<ul>
+<li>Register a module to be used by the resource controller</li>
+<li>Properties can be requested</li>
+<li>Properties can be configured</li>
+<li>Operations should be performed at certain stage, e.g. before resource is ready to use, or before resource is set to be released.</li>
+</ul><p>When a new instance of resource proxy is being created, such mixin modules can be used to extend the resource proxy instance. By naming convention, creating an instance of resource proxy with type ':alpha', will result the resource proxy instance extended using mixin resource proxy module 'Alpha'.</p>
+
+<p>This little tutorial will give a brief example on how to implement the resource proxy definitions.</p>
+
+<p><a href="http://rubydoc.info/github/mytestbed/omf/file/doc/RESOURCE_PROXY.md">Example: implement your own resource proxy files</a></p>
+
+<p>If you would like to extend or improve OMF, simply <a href="https://github.com/mytestbed/omf/fork_select">fork our project</a> via github, and send us pull requests whenever you are ready. There is a great guide <a href="http://help.github.com/fork-a-repo/">here</a> regarding forking a repo on github.</p>
+
+<h2>Components</h2>
+
+<p>This indicates the current status of varies OMF components.</p>
+
+<h3>Common</h3>
+
+<p>Gem name: <em>omf_common</em></p>
+
+<p>Common library shared among the OMF components</p>
+
+<ul>
+<li>PubSub communication, with default XMPP implementation, using Blather gem.</li>
+<li>OMF message class for authoring and parsing messages based on new OMF messaging protocol.</li>
+<li>RelaxNG schema for messaging protocol definition and validation.</li>
+</ul><h3>Resource Controller</h3>
+
+<p>Gem name: <em>omf_rc</em></p>
+
+<ul>
+<li>Resource proxy API for designing resource functionalities.</li>
+<li>Abstract resource provides common features required for all resources.</li>
+</ul><h3>Tools</h3>
+
+<p>Gem name: <em>omf_tools</em></p>
+
+<ul>
+<li>Some XMPP testing scripts migrated from 5.4 release</li>
+</ul><h3>Web</h3>
+
+<h3>SFA</h3>
+
+<h2>License &amp; Copyright</h2>
+
+<p>Copyright (c) 2006-2012 National ICT Australia (NICTA), Australia</p>
+
+<p>Copyright (c) 2004-2009 WINLAB, Rutgers University, USA</p>
+
+<p>Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal
+in the software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sub-license, and/or sell
+copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:</p>
+
+<p>The above copyright notice and this permission notice shall be included in all copies or substantial portions of the software.</p>
+
+<p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.</p>
+        </section>
+
+        <footer>
+          OMF is maintained by <a href="https://github.com/mytestbed">mytestbed</a><br>
+          This page was generated by <a href="http://pages.github.com">GitHub Pages</a>. Tactile theme by <a href="http://twitter.com/jasonlong">Jason Long</a>.
+        </footer>
+
+                  <script type="text/javascript">
+            var gaJsHost = (("https:" == document.location.protocol) ? "https://ssl." : "http://www.");
+            document.write(unescape("%3Cscript src='" + gaJsHost + "google-analytics.com/ga.js' type='text/javascript'%3E%3C/script%3E"));
+          </script>
+          <script type="text/javascript">
+            try {
+              var pageTracker = _gat._getTracker("UA-32592360-1");
+            pageTracker._trackPageview();
+            } catch(err) {}
+          </script>
+
+      </div>
+    </div>
+  </body>
+</html>
